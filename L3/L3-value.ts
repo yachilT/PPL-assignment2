@@ -1,10 +1,11 @@
 // ========================================================
 // Value type definition for L4
 
-import { isPrimOp, CExp, PrimOp, VarDecl } from './L3-ast';
+import { isPrimOp, CExp, PrimOp, VarDecl, Binding } from './L3-ast';
 import { Env, makeEmptyEnv } from './L3-env-env';
-import { append } from 'ramda';
+import { F, append } from 'ramda';
 import { isArray, isNumber, isString } from '../shared/type-predicates';
+import { makeEnv } from './L3-env-sub';
 
 
 export type Value = SExpValue;
@@ -26,6 +27,35 @@ export const makeClosure = (params: VarDecl[], body: CExp[]): Closure =>
 export const makeClosureEnv = (params: VarDecl[], body: CExp[], env: Env): Closure =>
     ({tag: "Closure", params: params, body: body, env: env});
 export const isClosure = (x: any): x is Closure => x.tag === "Closure";
+// ========================================================
+// Class
+export type ClassValue = { // changed
+    tag: "ClassValue";
+    fields: VarDecl[];
+    methods: Binding[];
+    env: Env;
+}
+export const makeClassValue = (fields: VarDecl[], methods: Binding[]): ClassValue => 
+    ({tag: "ClassValue", fields: fields, methods: methods, env: makeEmptyEnv()});
+
+export const makeClassValueEnv = (fields: VarDecl[], methods: Binding[], env: Env): ClassValue =>
+    ({tag: "ClassValue", fields: fields, methods: methods, env: env});
+
+export const isClassValue = (x: any): x is ClassValue => x.tag === "ClassValue";
+// ========================================================
+// Object
+export type Object = { //changed
+    tag: "Object";
+    methods: Binding[];
+    env: Env;
+}
+export const makeObject = (methods: Binding[]): Object =>
+    ({tag: "Object", methods: methods, env: makeEmptyEnv()})
+
+export const makeObjectEnv = (methods: Binding[], env: Env): Object =>
+    ({tag: "Object", methods: methods, env: env})
+
+export const isObject = (x: any): x is Object => x.tag === "Object";
 
 // ========================================================
 // SExp
@@ -42,7 +72,7 @@ export type SymbolSExp = {
     val: string;
 }
 
-export type SExpValue = number | boolean | string | PrimOp | Closure | SymbolSExp | EmptySExp | CompoundSExp;
+export type SExpValue = number | boolean | string | PrimOp | Closure | ClassValue | Object | SymbolSExp | EmptySExp | CompoundSExp; // changed
 export const isSExp = (x: any): x is SExpValue =>
     typeof(x) === 'string' || typeof(x) === 'boolean' || typeof(x) === 'number' ||
     isSymbolSExp(x) || isCompoundSExp(x) || isEmptySExp(x) || isPrimOp(x) || isClosure(x);
@@ -58,6 +88,8 @@ export const makeSymbolSExp = (val: string): SymbolSExp =>
     ({tag: "SymbolSExp", val: val});
 export const isSymbolSExp = (x: any): x is SymbolSExp => x.tag === "SymbolSExp";
 
+
+
 // LitSExp are equivalent to JSON - they can be parsed and read as literal values
 // like SExp except that non functional values (PrimOp and Closures) can be embedded at any level.
 export type LitSExp = number | boolean | string | SymbolSExp | EmptySExp | CompoundSExp;
@@ -67,6 +99,11 @@ export const closureToString = (c: Closure): string =>
     // `<Closure ${c.params} ${L3unparse(c.body)}>`
     `<Closure ${c.params} ${c.body}>`
 
+export const classValueToString = (cv: ClassValue): string => //chagned
+    `<ClassValue ${cv.fields} ${cv.methods}>`
+export const objectToString = (o: Object): string =>   // changed
+    `<Object ${o.methods}`                                         
+
 export const compoundSExpToArray = (cs: CompoundSExp, res: string[]): string[] | { s1: string[], s2: string } =>
     isEmptySExp(cs.val2) ? append(valueToString(cs.val1), res) :
     isCompoundSExp(cs.val2) ? compoundSExpToArray(cs.val2, append(valueToString(cs.val1), res)) :
@@ -75,13 +112,15 @@ export const compoundSExpToArray = (cs: CompoundSExp, res: string[]): string[] |
 export const compoundSExpToString = (cs: CompoundSExp, css = compoundSExpToArray(cs, [])): string => 
     isArray(css) ? `(${css.join(' ')})` :
     `(${css.s1.join(' ')} . ${css.s2})`
-
+    
 export const valueToString = (val: Value): string =>
     isNumber(val) ?  val.toString() :
     val === true ? '#t' :
     val === false ? '#f' :
     isString(val) ? `"${val}"` :
     isClosure(val) ? closureToString(val) :
+    isClassValue(val) ? classValueToString(val): 
+    isObject(val) ? objectToString(val):
     isPrimOp(val) ? val.op :
     isSymbolSExp(val) ? val.val :
     isEmptySExp(val) ? "'()" :

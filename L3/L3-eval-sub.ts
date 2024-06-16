@@ -1,6 +1,6 @@
 // L3-eval.ts
 import { map } from "ramda";
-import { isCExp, isLetExp } from "./L3-ast";
+import { Binding, ClassExp, isCExp, isClassExp, isLetExp } from "./L3-ast";
 import { BoolExp, CExp, Exp, IfExp, LitExp, NumExp,
          PrimOp, ProcExp, Program, StrExp, VarDecl } from "./L3-ast";
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
@@ -8,7 +8,7 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value } from "./L3-value";
+import { isClosure, makeClosure, Closure, Value, ClassValue, makeClassValue, isClassValue } from "./L3-value";
 import { first, rest, isEmpty, List, isNonEmptyList } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
@@ -30,6 +30,7 @@ const L3applicativeEval = (exp: CExp, env: Env): Result<Value> =>
     isLitExp(exp) ? makeOk(exp.val) :
     isIfExp(exp) ? evalIf(exp, env) :
     isProcExp(exp) ? evalProc(exp, env) :
+    isClassExp(exp) ? evalClass(exp, env) : 
     isAppExp(exp) ? bind(L3applicativeEval(exp.rator, env), (rator: Value) =>
                         bind(mapResult(param => 
                             L3applicativeEval(param, env), 
@@ -53,7 +54,12 @@ const evalProc = (exp: ProcExp, env: Env): Result<Closure> =>
 const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =>
     isPrimOp(proc) ? applyPrimitive(proc, args) :
     isClosure(proc) ? applyClosure(proc, args, env) :
+    isClassValue(proc) ? applyClass(proc, args, env) :
     makeFailure(`Bad procedure ${format(proc)}`);
+
+const evalClass = (ce: ClassExp, env: Env): Result<ClassValue> =>
+    makeOk(makeClassValue(ce.fields, ce.methods));
+
 
 // Applications are computed by substituting computed
 // values into the body of the closure.
@@ -75,6 +81,13 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
     //return evalSequence(substitute(proc.body, vars, litArgs), env);
 }
 
+const applyClass = (classValue: ClassValue, args: Value[], env: Env): Result<Value> => {
+    const fields = map((f: VarDecl) => f.var, classValue.fields);
+    const methodsNames = map((b: Binding) => b.var.var, classValue.methods);
+    const methodsBodys = map((b: Binding) => b.val, classValue.methods);
+    const litArgs : CExp[] = map(valueToLitExp, args);
+    map((CEx))  // to be continued
+}
 // Evaluate a sequence of expressions (in a program)
 export const evalSequence = (seq: List<Exp>, env: Env): Result<Value> =>
     isNonEmptyList<Exp>(seq) ? 
