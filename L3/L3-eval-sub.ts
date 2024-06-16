@@ -1,6 +1,6 @@
 // L3-eval.ts
-import { map } from "ramda";
-import { Binding, ClassExp, isCExp, isClassExp, isLetExp } from "./L3-ast";
+import { map, zipWith } from "ramda";
+import { Binding, ClassExp, isCExp, isClassExp, isCompoundExp, isLetExp, makeBinding } from "./L3-ast";
 import { BoolExp, CExp, Exp, IfExp, LitExp, NumExp,
          PrimOp, ProcExp, Program, StrExp, VarDecl } from "./L3-ast";
 import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
@@ -8,8 +8,8 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
 import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value, ClassValue, makeClassValue, isClassValue } from "./L3-value";
-import { first, rest, isEmpty, List, isNonEmptyList } from '../shared/list';
+import { isClosure, makeClosure, Closure, Value, ClassValue, makeClassValue, isClassValue, makeObject, SExpValue } from "./L3-value";
+import { first, rest, isEmpty, List, isNonEmptyList, allT } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
 import { renameExps, substitute } from "./substitute";
@@ -83,11 +83,19 @@ const applyClosure = (proc: Closure, args: Value[], env: Env): Result<Value> => 
 
 const applyClass = (classValue: ClassValue, args: Value[], env: Env): Result<Value> => {
     const fields = map((f: VarDecl) => f.var, classValue.fields);
-    const methodsNames = map((b: Binding) => b.var.var, classValue.methods);
-    const methodsBodys = map((b: Binding) => b.val, classValue.methods);
     const litArgs : CExp[] = map(valueToLitExp, args);
-    map((CEx))  // to be continued
+    const methodsNames = map((b: Binding) => b.var.var, classValue.methods);
+    const methods = mapResult((b: Binding) => L3applicativeEval(b.val, env), classValue.methods);
+    const closures = bind(methods,
+         (methods: List<SExpValue>) => mapResult(
+            (method: SExpValue): Result<Closure> => isClosure(method) ? makeOk(makeClosure(method.params, substitute(renameExps(method.body), fields, litArgs))) : makeFailure(`couldn't call ${method}`),
+             methods));
+
+    return mapv(closures, (closures: Closure[]) => makeObject(zipWith(makeBinding, methodsNames,map(valueToLitExp, closures)))); // No clue about what we did here :(
+    
+
 }
+
 // Evaluate a sequence of expressions (in a program)
 export const evalSequence = (seq: List<Exp>, env: Env): Result<Value> =>
     isNonEmptyList<Exp>(seq) ? 

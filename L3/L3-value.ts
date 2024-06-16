@@ -99,10 +99,10 @@ export const closureToString = (c: Closure): string =>
     // `<Closure ${c.params} ${L3unparse(c.body)}>`
     `<Closure ${c.params} ${c.body}>`
 
-export const classValueToString = (cv: ClassValue): string => //chagned
-    `<ClassValue ${cv.fields} ${cv.methods}>`
+export const classValueToString = (cv: ClassValue): string => //changed
+    `Class`
 export const objectToString = (o: Object): string =>   // changed
-    `<Object ${o.methods}`                                         
+    `Object`                                         
 
 export const compoundSExpToArray = (cs: CompoundSExp, res: string[]): string[] | { s1: string[], s2: string } =>
     isEmptySExp(cs.val2) ? append(valueToString(cs.val1), res) :
@@ -119,8 +119,8 @@ export const valueToString = (val: Value): string =>
     val === false ? '#f' :
     isString(val) ? `"${val}"` :
     isClosure(val) ? closureToString(val) :
-    isClassValue(val) ? classValueToString(val): 
-    isObject(val) ? objectToString(val):
+    isClassValue(val) ? 'Class': 
+    isObject(val) ? 'Object':
     isPrimOp(val) ? val.op :
     isSymbolSExp(val) ? val.val :
     isEmptySExp(val) ? "'()" :
