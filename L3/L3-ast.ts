@@ -255,10 +255,10 @@ const parseLetExp = (bindings: Sexp, body: Sexp[]): Result<LetExp> => {
 }
 
 const parseClassExp = (fields: Sexp, methods: Sexp): Result<ClassExp> => { // No clue what we did here. :(
-    if(!(isArray(fields) && allT(isIdentifier, fields))){
+    if(!(isArray(fields) && fields.length != 0 && allT(isIdentifier, fields))){
         return makeFailure("Invalid fields for ClassExp");
     } 
-    if(!isGoodBindings(methods)){
+    if(!(isGoodBindings(methods) && methods.length != 0)){
         return makeFailure("Invalid method bindings for ClassExp");
     }
     const parsedFields = map(b => makeVarDecl(b), fields);
