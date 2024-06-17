@@ -5,7 +5,6 @@ import { isPrimOp, CExp, PrimOp, VarDecl, Binding } from './L3-ast';
 import { Env, makeEmptyEnv } from './L3-env-env';
 import { F, append } from 'ramda';
 import { isArray, isNumber, isString } from '../shared/type-predicates';
-import { makeEnv } from './L3-env-sub';
 
 
 export type Value = SExpValue;
