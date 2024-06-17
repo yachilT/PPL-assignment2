@@ -7,8 +7,8 @@ import { isAppExp, isBoolExp, isDefineExp, isIfExp, isLitExp, isNumExp,
              isPrimOp, isProcExp, isStrExp, isVarRef } from "./L3-ast";
 import { makeBoolExp, makeLitExp, makeNumExp, makeProcExp, makeStrExp } from "./L3-ast";
 import { parseL3Exp } from "./L3-ast";
-import { applyEnv, makeEmptyEnv, makeEnv, Env } from "./L3-env-sub";
-import { isClosure, makeClosure, Closure, Value, ClassValue, makeClassValue, isClassValue, makeObject, SExpValue } from "./L3-value";
+import { applyEnv, makeEmptyEnv, makeEnv, Env, isNonEmptyEnv } from "./L3-env-sub";
+import { isClosure, makeClosure, Closure, Value, Object, ClassValue, makeClassValue, isClassValue, makeObject, SExpValue, isObject, isSymbolSExp } from "./L3-value";
 import { first, rest, isEmpty, List, isNonEmptyList, allT } from '../shared/list';
 import { isBoolean, isNumber, isString } from "../shared/type-predicates";
 import { Result, makeOk, makeFailure, bind, mapResult, mapv } from "../shared/result";
@@ -55,6 +55,7 @@ const L3applyProcedure = (proc: Value, args: Value[], env: Env): Result<Value> =
     isPrimOp(proc) ? applyPrimitive(proc, args) :
     isClosure(proc) ? applyClosure(proc, args, env) :
     isClassValue(proc) ? applyClass(proc, args, env) :
+    isObject(proc) ? applyObject(proc, args, env):
     makeFailure(`Bad procedure ${format(proc)}`);
 
 const evalClass = (ce: ClassExp, env: Env): Result<ClassValue> =>
@@ -94,6 +95,25 @@ const applyClass = (classValue: ClassValue, args: Value[], env: Env): Result<Val
     return mapv(closures, (closures: Closure[]) => makeObject(zipWith(makeBinding, methodsNames,map(valueToLitExp, closures)))); // No clue about what we did here :(
     
 
+}
+
+const applyObject = (object: Object, args: Value[], env: Env): Result<Value> => {
+    if(!isNonEmptyList<Value>(args)){
+        return makeFailure("No method name was given");
+    }
+    
+    if (!isSymbolSExp(args[0])) {
+        return makeFailure("first argument isn't method name")
+    }
+    
+    const methodNames = map((b: Binding) => b.var.var , object.methods);
+    const selectedName = args[0].val;
+    if(!methodNames.includes(selectedName)) {
+        return makeFailure(`Unrecognized method: ${selectedName}`)
+    }
+    const selectedMethod = object.methods[methodNames.indexOf(selectedName)]
+    const methodArgs = rest(args);
+    return bind(L3applicativeEval(selectedMethod.val, env), (v: Value) => L3applyProcedure(v, methodArgs, env));
 }
 
 // Evaluate a sequence of expressions (in a program)
