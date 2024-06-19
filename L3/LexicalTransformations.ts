@@ -14,8 +14,8 @@ export const class2proc = (exp: ClassExp): ProcExp =>
     makeProcExp(exp.fields, [makeProcExp([makeVarDecl("msg")],
             [reduce
                 (
-                (acc: CExp, b: Binding) => makeIfExp(makeAppExp(makePrimOp("eq?"), [makeVarRef("msg"), makeLitExp(b.var.var)]), b.val, acc),
-                makeBoolExp(false) as CExp,
+                (acc: CExp, b: Binding): CExp => makeIfExp(makeAppExp(makePrimOp("eq?"), [makeVarRef("msg"), makeLitExp(makeSymbolSExp(b.var.var))]), makeAppExp(b.val, []), acc),
+                makeBoolExp(false),
                 reverse(exp.methods)
                 )
             ])])
